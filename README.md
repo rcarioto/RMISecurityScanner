@@ -15,6 +15,7 @@ A comprehensive Python tool for security testing Java RMI (Remote Method Invocat
 - **JSON Output**: Export scan results to JSON format for further analysis
 
 ### Advanced Features
+- **Comprehensive CVE Detection**: Database of 21+ CVEs including RMI-specific, deserialization, and Java version vulnerabilities
 - **SSL/TLS Support**: Test RMI services over encrypted connections
 - **Timeout Configuration**: Configurable connection timeouts
 - **Verbose Output**: Detailed diagnostic information
@@ -92,6 +93,24 @@ chmod +x RMISecurityScanner.py
 ./RMISecurityScanner.py -H example.com -u admin --password mypass
 ```
 
+#### Security Testing Options
+```bash
+# Run only safe read-only tests (default)
+./RMISecurityScanner.py -H example.com --test-safe-only
+
+# Run specific security tests
+./RMISecurityScanner.py -H example.com --test-security-manager --test-serialization-filter
+
+# Run CVE detection
+./RMISecurityScanner.py -H example.com --test-cve-detection
+
+# Run all security tests (WARNING: Includes potentially harmful tests)
+./RMISecurityScanner.py -H example.com --test-all
+
+# Run specific potentially harmful tests (use with caution)
+./RMISecurityScanner.py -H example.com --test-registry-manipulation --test-dos
+```
+
 ## Example Output
 
 ### Standard RMI Server Scan
@@ -144,14 +163,157 @@ Exposed Objects: 1
         Codebase URL: http://example.com/classes/
 ```
 
+### CVE Detection
+```
+[*] Checking for known CVEs...
+[!] Potential CVEs detected: 5
+    [!] CVE-2017-3241 (CRITICAL) - RMI Registry allows remote code execution via deserialization
+        Type: RMI, Fixed in: Java 8u121+
+    [!] CVE-2015-4902 (CRITICAL) - Java deserialization vulnerability - remote code execution
+        Type: Deserialization, Fixed in: JEP 290 (Java 9+) or serialization filter
+    [!] CVE-2019-2684 (HIGH) - RMI Registry vulnerability allowing unauthorized access
+        Type: RMI, Fixed in: Java 8u212+
+    [*] CVE-2018-11776 (HIGH) - Multiple security vulnerabilities in Java 8
+        Type: General, Fixed in: Java 8u191+
+    [*] CVE-NO-SECURITY-MANAGER (MEDIUM) - No security manager configured - reduced security controls
+        Type: Configuration, Fixed in: Enable security manager
+```
+
 ## Security Features
 
-### What Gets Tested
+### What Gets Tested (Default - Safe Tests Only)
+By default, the scanner performs only safe, read-only tests:
 1. **Connection**: Can we connect to the RMI service?
 2. **Authentication**: Is authentication required?
 3. **Credential Brute Force**: Try common passwords (admin:admin, admin:password, etc.)
 4. **Remote Codebase**: Can classes be downloaded remotely? (Security risk)
 5. **Object Enumeration**: What objects are exposed?
+
+### Optional Security Tests
+
+The scanner includes many additional security tests that are **disabled by default**. These can be enabled individually or all at once using command-line flags. See the [Security Test Risk Levels](#security-test-risk-levels) section below for details.
+
+**Available Test Flags:**
+- `--test-deserialization` - Test for deserialization vulnerabilities
+- `--test-registry-manipulation` - Test registry bind/rebind/unbind operations
+- `--test-method-invocation` - Test method invocation on exposed objects
+- `--test-security-manager` - Detect security manager configuration
+- `--test-serialization-filter` - Detect serialization filter configuration
+- `--test-dgc` - Test DGC (Distributed Garbage Collection) endpoint
+- `--test-activation` - Test RMI activation system
+- `--test-information-disclosure` - Gather information disclosure
+- `--test-ssl-tls` - Test SSL/TLS configuration
+- `--test-cve-detection` - Comprehensive CVE detection (21+ CVEs, version & config-based)
+- `--test-network-protocol` - Test network protocol level issues
+- `--test-auth-bypass` - Test authentication bypass techniques
+- `--test-codebase-validation` - Validate codebase URLs
+- `--test-dos` - Test for DoS vulnerabilities
+- `--test-logging` - Detect logging configuration
+
+**Convenience Flags:**
+- `--test-all` - Run all security tests (WARNING: Includes potentially harmful tests)
+- `--test-safe-only` - Run only safe read-only tests (default behavior)
+
+## Security Test Risk Levels
+
+### High Risk Tests (Potentially Harmful)
+These tests can cause harm to the remote server and should only be used with explicit authorization:
+
+1. **DoS Testing** (`--test-dos`)
+   - **Risk Level**: HIGH
+   - **What it does**: Creates multiple simultaneous connections to test connection limits
+   - **Potential Impact**: May cause service disruption or denial of service on vulnerable servers
+   - **Use Case**: Testing DoS protection mechanisms
+
+2. **Registry Manipulation Testing** (`--test-registry-manipulation`)
+   - **Risk Level**: HIGH
+   - **What it does**: Attempts to bind/rebind/unbind objects in the RMI registry
+   - **Potential Impact**: Modifies the registry by adding test objects (names like `TEST_BIND_*`)
+   - **Use Case**: Testing if registry write access is properly restricted
+
+### Medium Risk Tests
+These tests may cause unintended side effects:
+
+3. **Method Invocation Testing** (`--test-method-invocation`)
+   - **Risk Level**: MEDIUM
+   - **What it does**: Invokes methods on discovered remote objects (methods with no parameters)
+   - **Potential Impact**: If methods are destructive (delete files, shutdown services, etc.), this could cause harm
+   - **Use Case**: Testing what methods are callable and what they return
+
+4. **Deserialization Vulnerability Testing** (`--test-deserialization`)
+   - **Risk Level**: MEDIUM
+   - **What it does**: Attempts to deserialize objects from the registry
+   - **Potential Impact**: If the service is vulnerable to deserialization attacks, this could trigger code execution
+   - **Note**: Current implementation doesn't send malicious payloads, but deserialization itself can be risky
+   - **Use Case**: Testing if services properly handle deserialization
+
+### Low Risk Tests (Safe - Read-Only)
+These tests are safe and perform only read-only operations:
+
+5. **Security Manager Detection** (`--test-security-manager`)
+   - **Risk Level**: LOW
+   - **What it does**: Checks if a security manager is configured
+   - **Impact**: Read-only, no modifications
+
+6. **Serialization Filter Detection** (`--test-serialization-filter`)
+   - **Risk Level**: LOW
+   - **What it does**: Detects if serialization filters (JEP 290) are configured
+   - **Impact**: Read-only, no modifications
+
+7. **DGC Testing** (`--test-dgc`)
+   - **Risk Level**: LOW
+   - **What it does**: Tests if DGC endpoint is accessible (connection test only)
+   - **Impact**: Minimal, just checks port accessibility
+
+8. **Activation System Testing** (`--test-activation`)
+   - **Risk Level**: LOW
+   - **What it does**: Tests if RMI activation daemon is accessible (connection test only)
+   - **Impact**: Minimal, just checks port accessibility
+
+9. **Information Disclosure** (`--test-information-disclosure`)
+   - **Risk Level**: LOW
+   - **What it does**: Gathers Java version, OS info, and error messages
+   - **Impact**: Read-only, information gathering
+
+10. **SSL/TLS Configuration Testing** (`--test-ssl-tls`)
+    - **Risk Level**: LOW
+    - **What it does**: Tests SSL/TLS configuration for weak protocols/ciphers
+    - **Impact**: Read-only, connection analysis
+
+11. **CVE Detection** (`--test-cve-detection`)
+    - **Risk Level**: LOW
+    - **What it does**: Comprehensive CVE detection based on Java version and configuration
+    - **Impact**: Read-only, version and configuration analysis
+    - **Features**:
+      - **21+ CVEs in database** including RMI-specific, deserialization, and general Java CVEs
+      - **Version-based detection**: Checks Java 8, 11, 17 versions against known vulnerabilities
+      - **Configuration-based detection**: Identifies CVEs based on security settings (serialization filters, security manager, etc.)
+      - **RMI-specific CVEs**: CVE-2017-3241, CVE-2019-2684, CVE-2020-1472
+      - **Severity classification**: CRITICAL, HIGH, MEDIUM, LOW
+      - **Detailed information**: CVE ID, description, severity, type, and fix version
+
+12. **Network Protocol Testing** (`--test-network-protocol`)
+    - **Risk Level**: LOW
+    - **What it does**: Tests protocol version negotiation
+    - **Impact**: Minimal, protocol handshake only
+
+13. **Authentication Bypass Testing** (`--test-auth-bypass`)
+    - **Risk Level**: LOW
+    - **What it does**: Tests authentication bypass techniques with null credentials
+    - **Impact**: Read-only, authentication testing
+
+14. **Codebase URL Validation** (`--test-codebase-validation`)
+    - **Risk Level**: LOW
+    - **What it does**: Validates codebase URL format
+    - **Impact**: Read-only, URL parsing
+
+15. **Logging Detection** (`--test-logging`)
+    - **Risk Level**: LOW
+    - **What it does**: Attempts to detect if operations are logged (requires server-side analysis)
+    - **Impact**: Read-only, detection only
+
+### Default Behavior
+By default, the scanner runs only the core safe tests (connection, authentication, codebase detection, object enumeration). All optional security tests are disabled unless explicitly enabled with flags.
 
 ### Common Default Credentials Tested
 - `admin:admin`
@@ -272,4 +434,5 @@ Ray Carioto <raymond.carioto@gmail.com>
   - Remote codebase download testing
   - Object enumeration capabilities
   - Multi-host and multi-credential scanning support
+  - Comprehensive CVE detection (21+ CVEs, version & configuration-based)
   - Comprehensive documentation
