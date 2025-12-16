@@ -1,0 +1,29 @@
+# RMI Security Scanner - Python Dependencies
+# 
+# Required Python version: 3.6 or higher
+#
+# The RMI Security Scanner uses only Python standard library modules.
+# No external Python packages are required.
+#
+# Standard library modules used:
+# - socket
+# - ssl
+# - struct
+# - sys
+# - argparse
+# - json
+# - typing
+# - subprocess
+# - os
+# - tempfile
+#
+# System Requirements:
+# - Java JDK (for RMI functionality)
+#   Recommended: OpenJDK 17
+#   Install with: sudo apt install -y openjdk-17-jdk
+#
+# Optional system tools:
+# - keytool (usually comes with JDK, for SSL connections)
+# - lsof or netstat (for port checking)
+
+# No Python packages required - all dependencies are in the standard library
