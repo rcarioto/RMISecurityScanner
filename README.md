@@ -64,8 +64,8 @@ chmod +x RMISecurityScanner.py
 
 ### Command Line Options
 - `-H, --host HOST`: RMI server hostname or IP (required, or use --hosts-file)
-- `--hosts-file FILE`: File containing list of hosts (one per line, format: host:port or host)
-- `-p, --port PORT`: RMI server port (default: 1099, ignored if hosts-file specifies ports)
+- `--hosts-file FILE`: File containing list of hosts (one per line, format: host:port or host). Hosts without ports will use the port from `-p` option
+- `-p, --port PORT`: RMI server port (default: 1099, used for hosts without port in hosts-file)
 - `-s, --ssl`: Use SSL/TLS connection
 - `-t, --timeout SECONDS`: Connection timeout in seconds (default: 5)
 - `-u, --username USERNAME`: Single username to use for authentication
@@ -82,6 +82,13 @@ chmod +x RMISecurityScanner.py
 ```bash
 # Multiple hosts with single password
 ./RMISecurityScanner.py --hosts-file hosts.txt --password mypass
+
+# Multiple hosts with custom port (hosts without ports in file will use this port)
+# Example hosts.txt:
+#   host1.example.com          # Will use port from -p option (1099)
+#   host2.example.com:1098     # Will use port 1098 (specified in file)
+#   host3.example.com          # Will use port from -p option (1099)
+./RMISecurityScanner.py --hosts-file hosts.txt -p 1099 --password mypass
 
 # Single host with password list
 ./RMISecurityScanner.py -H example.com --passwords-file passwords.txt

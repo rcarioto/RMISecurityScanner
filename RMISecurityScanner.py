@@ -2224,8 +2224,16 @@ public class RMIAuthBypass {
         return self.results
 
 
-def parse_hosts_file(hosts_file: str) -> List[Tuple[str, int]]:
-    """Parse hosts file and return list of (host, port) tuples"""
+def parse_hosts_file(hosts_file: str, default_port: int = 1099) -> List[Tuple[str, int]]:
+    """Parse hosts file and return list of (host, port) tuples
+    
+    Args:
+        hosts_file: Path to file containing hosts (one per line)
+        default_port: Port to use for hosts that don't specify a port (default: 1099)
+    
+    Returns:
+        List of (host, port) tuples
+    """
     hosts = []
     try:
         with open(hosts_file, 'r') as f:
@@ -2242,11 +2250,11 @@ def parse_hosts_file(hosts_file: str) -> List[Tuple[str, int]]:
                     try:
                         port = int(parts[1].strip())
                     except ValueError:
-                        print(f"[!] Warning: Invalid port in '{line}', using default 1099")
-                        port = 1099
+                        print(f"[!] Warning: Invalid port in '{line}', using default port {default_port}")
+                        port = default_port
                 else:
                     host = line.strip()
-                    port = 1099
+                    port = default_port
                 
                 if host:
                     hosts.append((host, port))
@@ -2475,7 +2483,7 @@ Examples:
     host_group.add_argument("-H", "--host", help="RMI server hostname or IP")
     host_group.add_argument("--hosts-file", help="File containing list of hosts (one per line, format: host:port or host)")
     
-    parser.add_argument("-p", "--port", type=int, default=1099, help="RMI server port (default: 1099, ignored if hosts-file specifies ports)")
+    parser.add_argument("-p", "--port", type=int, default=1099, help="RMI server port (default: 1099, used for hosts without port in hosts-file)")
     parser.add_argument("-s", "--ssl", action="store_true", help="Use SSL/TLS connection")
     parser.add_argument("-t", "--timeout", type=int, default=5, help="Connection timeout in seconds (default: 5)")
     
@@ -2534,7 +2542,7 @@ Examples:
     
     # Parse hosts
     if args.hosts_file:
-        hosts = parse_hosts_file(args.hosts_file)
+        hosts = parse_hosts_file(args.hosts_file, args.port)
         if not hosts:
             print("[-] No valid hosts found in hosts file")
             sys.exit(1)
